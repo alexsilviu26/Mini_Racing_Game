@@ -22,7 +22,7 @@ WALLS_MASK = pygame.mask.from_surface(WALLS)
 FINISH = scale(pygame.image.load('images/finish.png'), 1.5)
 FINISH_MASK = pygame.mask.from_surface(FINISH)
 TITLE = scale(pygame.image.load('images/title.jpg'), 2)
-FINISH_POSITION = (800, 290)
+FINISH_POSITION = (795, 398)
 WHITE = (255, 255, 255)
 RED = (255, 0, 0)
 
@@ -35,10 +35,11 @@ def draw_reset_button(WIN):
 
 # Reset game
 def reset_game():
-    global player_car  # Ensure player_car is accessed correctly
-    player_car.vel = 0  # Reset velocity
-    player_car.x, player_car.y = player_car.START_POS  # Reset position
+    global player_car
+    player_car.vel = 0
+    player_car.x, player_car.y = player_car.START_POS
     update_background(WIN)
+
 
 # Abstract car class
 class AbstractCar:
@@ -163,14 +164,11 @@ def update_background(WIN):
     player_car.draw(WIN)
     pygame.display.update()
 
-def draw_speed(WIN, speed, lap_time=None):
+
+def draw_speed(WIN, speed):
     font = pygame.font.Font(None, 36)
     speed_text = font.render(f'Viteza: {int(speed) * 50} km/h', True, WHITE)
     WIN.blit(speed_text, (10, 70))  # Poziționează viteza
-
-    if lap_time is not None:
-        lap_time_text = font.render(f'Timp tur: {lap_time:.2f} secunde', True, WHITE)
-        WIN.blit(lap_time_text, (10, 110))  # Poziționează timpul
 
 
 # Game loop
@@ -200,18 +198,17 @@ def draw_main_menu(WIN):
 # Main game loop
 running = True
 player_car = RedCar(6, 3)
-start_time = 0
-lap_time = 0
-is_racing = False
 
 while running:
+
     WIN.blit(TITLE, (0, 0))  # Clear the screen
     moved = False
+
     if screen_state == 0:
-        draw_main_menu(WIN)  # Draw main menu
+        draw_main_menu(WIN)
     elif screen_state == 1:
-        update_background(WIN)  # Draw game screen
-        draw_speed(WIN, player_car.vel, lap_time)  # Include lap time
+        update_background(WIN)
+        draw_speed(WIN, player_car.vel)
 
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
@@ -220,21 +217,20 @@ while running:
             mouse_pos = event.pos
             if 10 <= mouse_pos[0] <= 110 and 10 <= mouse_pos[1] <= 60:
                 reset_game()
-
-        if event.type == pygame.KEYDOWN:
+        elif event.type == pygame.KEYDOWN:
             if event.key == pygame.K_1:
                 change_car("red_car")
-                screen_state = 1  # Ensure we stay on game screen after car selection
+                screen_state = 1
             elif event.key == pygame.K_2:
                 change_car("blue_car")
-                screen_state = 1  # Ensure we stay on game screen after car selection
+                screen_state = 1
             elif event.key == pygame.K_3:
                 change_car("orange_car")
-                screen_state = 1  # Ensure we stay on game screen after car selection
+                screen_state = 1
             elif event.key == pygame.K_ESCAPE and screen_state == 0:
                 running = False
 
-    if screen_state == 1:  # Game screen logic
+    if screen_state == 1:
         command = pygame.key.get_pressed()
         if command[pygame.K_a]:
             player_car.rotate(left=True)
@@ -250,7 +246,7 @@ while running:
             elif player_car.position(DECO_MASK):
                 player_car.reduce_speed_deco()
         if command[pygame.K_s]:
-            if(player_car.vel > 0):
+            if player_car.vel > 0:
                 player_car.brake()
             else:
                 moved = True
@@ -271,5 +267,8 @@ while running:
 
     pygame.display.flip()
     clock.tick(FPS)
+
+
+
 
 pygame.quit()
