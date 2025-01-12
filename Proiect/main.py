@@ -2,11 +2,12 @@ import pygame
 import math
 from func import scale
 from func import blit_rotate
+import time
 
-# Initialize pygame
+# Inițializarea modulului pygame
 pygame.init()
 
-# Load assets
+# Încărcarea resurselor grafice
 LOGGO = pygame.image.load('images/loggo.JPG')
 ORANGE_CAR = scale(pygame.image.load('images/orange_car.png'), 0.5)
 BLUE_CAR = scale(pygame.image.load('images/blue_car.png'), 0.5)
@@ -26,22 +27,40 @@ FINISH_POSITION = (795, 398)
 WHITE = (255, 255, 255)
 RED = (255, 0, 0)
 
-# Draw reset button
+# Funcție pentru desenarea butonului de resetare
 def draw_reset_button(WIN):
     font = pygame.font.Font(None, 36)
     text = font.render('Reset', True, WHITE)
     pygame.draw.rect(WIN, RED, [10, 10, 100, 50])
     WIN.blit(text, (20, 20))
 
-# Reset game
+# Funcție pentru resetarea jocului
 def reset_game():
-    global player_car
+    global player_car, lap_start_time, finish_crossed, laps_completed
     player_car.vel = 0
     player_car.x, player_car.y = player_car.START_POS
+    player_car.angle = 180  # Resetare unghi mașină
+    lap_start_time = time.time()
+    finish_crossed = False
+    laps_completed = 0
     update_background(WIN)
 
+# Funcție pentru afișarea timpului ultimei ture
+def render_lap_time(screen, time):
+    if laps_completed > 1:
+        font = pygame.font.Font(None, 36)
+        lap_time_text = font.render(f"Last Lap: {time:.2f} seconds", True, (255, 255, 255))
+        screen.blit(lap_time_text, (160, 10))
+# Funcție pentru afișarea timpului curent al turei
+def render_current_lap_time(screen, lap_start_time):
+    """Afișează timpul curent al turului pe ecran."""
+    current_time = time.time() - lap_start_time
+    font = pygame.font.Font(None, 36)
+    current_lap_time_text = font.render(f"Current Lap: {current_time:.2f} seconds", True, (255, 255, 255))
+    screen.blit(current_lap_time_text, (160, 40))
 
-# Abstract car class
+
+# Clasa abstractă pentru mașini
 class AbstractCar:
     IMG = None
     START_POS = (0, 0)
@@ -55,15 +74,18 @@ class AbstractCar:
         self.x, self.y = self.START_POS
         self.acceleration = 1
 
+    # Funcție pentru rotația mașinii
     def rotate(self, left=False, right=False):
         if left:
             self.angle += self.rotation_vel
         if right:
             self.angle -= self.rotation_vel
 
+    # Funcție pentru desenarea mașinii pe ecran
     def draw(self, win):
         blit_rotate(win, self.img, (self.x, self.y), self.angle)
 
+    # Funcții pentru deplasarea mașinii
     def move_forward(self):
         self.vel = min(self.vel + self.acceleration, self.max_vel)
         self.move()
@@ -79,9 +101,11 @@ class AbstractCar:
         self.y -= vertical
         self.x -= horizontal
 
-    def brake (self):
+    # Funcție pentru frânare
+    def brake(self):
         self.vel = max(self.vel - self.acceleration, 0)
 
+    # Reducerea vitezei în condiții normale
     def reduce_speed(self):
         if self.vel > 0:
             self.vel = max(self.vel - self.acceleration * 0.1, 0)
@@ -89,27 +113,24 @@ class AbstractCar:
             self.vel = min(self.vel + self.acceleration * 0.1, 0)
         self.move()
 
+    # Reducerea vitezei la limitele pistei
     def reduce_speed_limits(self):
-        if(self.vel > self.max_vel/2):
-            if self.vel > 0:
-                self.vel = max(self.vel - self.acceleration * 0.5, 0)
-            elif self.vel < 0:
-                self.vel = min(self.vel + self.acceleration * 0.5, 0)
+        if self.vel > self.max_vel / 2:
+            self.vel = max(self.vel - self.acceleration * 0.5, 0)
 
+    # Reducerea vitezei la decor
     def reduce_speed_deco(self):
-        if(self.vel > 1):
-            if self.vel > 0:
-                self.vel = max(self.vel - self.acceleration * 2, 0)
-            elif self.vel < 0:
-                self.vel = min(self.vel + self.acceleration * 2, 0)
+        if self.vel > 1:
+            self.vel = max(self.vel - self.acceleration * 2, 0)
 
+    # Determinarea poziției mașinii pe pistă folosind masca
     def position(self, mask, x=0, y=0):
         car_mask = pygame.mask.from_surface(self.img)
         offset = (int(self.x - x), int(self.y - y))
         poi = mask.overlap(car_mask, offset)
         return poi
 
-# Player car class
+# Clase pentru diferite tipuri de mașini
 class RedCar(AbstractCar):
     IMG = RED_CAR
     START_POS = (815, 350)
@@ -122,29 +143,11 @@ class OrangeCar(AbstractCar):
     IMG = ORANGE_CAR
     START_POS = (815, 350)
 
-# Dicționar pentru mașinile din joc
+# Dicționar pentru stocarea caracteristicilor mașinilor
 cars = {
-    "red_car": {
-        "class": RedCar,
-        "color": "red",
-        "max_vel": 6,
-        "rotation_vel": 4,
-        "start_pos": (820, 350)
-    },
-    "blue_car": {
-        "class": BlueCar,
-        "color": "blue",
-        "max_vel": 5,
-        "rotation_vel": 2,
-        "start_pos": (820, 350)
-    },
-    "orange_car": {
-        "class": OrangeCar,
-        "color": "orange",
-        "max_vel": 4,
-        "rotation_vel": 2,
-        "start_pos": (820, 350)
-    }
+    "red_car": {"class": RedCar, "max_vel": 6, "rotation_vel": 4, "start_pos": (820, 350)},
+    "blue_car": {"class": BlueCar, "max_vel": 5, "rotation_vel": 2, "start_pos": (820, 350)},
+    "orange_car": {"class": OrangeCar, "max_vel": 4, "rotation_vel": 2, "start_pos": (820, 350)}
 }
 
 # Funcție pentru schimbarea mașinii
@@ -153,10 +156,10 @@ def change_car(car_type):
     car_info = cars.get(car_type)
     if car_info:
         player_car = car_info["class"](car_info["max_vel"], car_info["rotation_vel"])
-        player_car.x, player_car.y = car_info["start_pos"]  # Setează poziția de start
+        player_car.x, player_car.y = car_info["start_pos"]
     reset_game()
 
-# Update background
+# Funcție pentru actualizarea fundalului
 def update_background(WIN):
     WIN.blit(FINISH, (795, 398))
     WIN.blit(CIRCUIT, (0, 0))
@@ -164,14 +167,13 @@ def update_background(WIN):
     player_car.draw(WIN)
     pygame.display.update()
 
-
+# Funcție pentru afișarea vitezei
 def draw_speed(WIN, speed):
     font = pygame.font.Font(None, 36)
     speed_text = font.render(f'Viteza: {int(speed) * 50} km/h', True, WHITE)
-    WIN.blit(speed_text, (10, 70))  # Poziționează viteza
+    WIN.blit(speed_text, (10, 70))
 
-
-# Game loop
+# Setări generale pentru joc
 HEIGHT = TRACK.get_height()
 WIDTH = TRACK.get_width()
 FPS = 60
@@ -180,6 +182,15 @@ pygame.display.set_caption("F1 game")
 pygame.display.set_icon(LOGGO)
 clock = pygame.time.Clock()
 screen_state = 0
+
+# Variabile pentru gestionarea turelor
+lap_start_time = time.time()
+lap_times = []
+finish_crossed = False
+previous_lap_time = 0
+laps_completed = 0
+
+# Funcție pentru desenarea meniului principal
 def draw_main_menu(WIN):
     font = pygame.font.Font(None, 74)
     title = font.render("F1 Racing Game", True, WHITE)
@@ -195,13 +206,12 @@ def draw_main_menu(WIN):
     text = font.render("Press ESC to exit", True, WHITE)
     WIN.blit(text, (WIDTH // 4, HEIGHT // 2 + 80))
 
-# Main game loop
+# Bucle principal al jocului
 running = True
 player_car = RedCar(6, 3)
 
 while running:
-
-    WIN.blit(TITLE, (0, 0))  # Clear the screen
+    WIN.blit(TITLE, (0, 0))
     moved = False
 
     if screen_state == 0:
@@ -255,20 +265,34 @@ while running:
                     player_car.reduce_speed_limits()
                 elif player_car.position(DECO_MASK):
                     player_car.reduce_speed_deco()
-
-        if player_car.position(TRACK_LIMITS_MASK):
-            player_car.reduce_speed_limits()
-
         if player_car.position(WALLS_MASK):
             reset_game()
 
+        if player_car.position(FINISH_MASK):
+            if not finish_crossed:
+                lap_end_time = time.time()
+                lap_time = lap_end_time - lap_start_time
+                lap_start_time = lap_end_time
+                laps_completed += 1  # Incrementăm turele complete doar dacă linia este traversată
+                if laps_completed > 1:  # Afișăm timpul doar după ce s-au realizat cel puțin 2 ture
+                    lap_times.append(lap_time)
+                    previous_lap_time = lap_time
+                finish_crossed = True
+        else:
+            finish_crossed = False
+
         if not moved:
             player_car.reduce_speed()
-
+        render_current_lap_time(WIN, lap_start_time)
+        render_lap_time(WIN, previous_lap_time)
     pygame.display.flip()
     clock.tick(FPS)
 
-
-
+# Afișarea turelor în consolă
+j = 1
+for i, lap_time in enumerate(lap_times):
+    if lap_time > 7:
+        print(f"Lap {j}: {lap_time:.2f} seconds")
+        j += 1
 
 pygame.quit()
